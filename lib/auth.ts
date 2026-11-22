@@ -6,15 +6,17 @@ import { Role } from "@prisma/client";
 
 export const SESSION_COOKIE = "reachout_session";
 export const SESSION_TTL_MS = 10 * 60 * 1000;
+const ADMIN_SESSION_TTL_MS = 24 * 60 * 60 * 1000;
 const SESSION_LOGOUT_GRACE_MS = 60 * 1000;
 
 export function hashToken(token: string) {
   return createHash("sha256").update(token).digest("hex");
 }
 
-export async function createSession(userId: string) {
+export async function createSession(userId: string, role: Role = "USER") {
   const token = randomBytes(32).toString("base64url");
-  const expiresAt = new Date(Date.now() + SESSION_TTL_MS);
+  const ttl = role === "ADMIN" ? ADMIN_SESSION_TTL_MS : SESSION_TTL_MS;
+  const expiresAt = new Date(Date.now() + ttl);
   await prisma.userSession.create({
     data: { userId, sessionTokenHash: hashToken(token), expiresAt },
   });

@@ -43,6 +43,7 @@ type Conversation = {
   adminUnreadCount: number;
   userTypingUntil?: string | null;
   userIsTyping?: boolean;
+  userSessionExpiresAt?: string | null;
   user: { id: string; username: string; email?: string | null };
 };
 
@@ -124,6 +125,14 @@ function formatCountdown(value: number | null) {
   return `${minutes}:${seconds}`;
 }
 
+function formatUserSessionTime(expiresAt: string | null | undefined, now: number) {
+  if (!expiresAt) return "User signed out";
+  if (!now) return "Checking user session";
+  const remaining = Math.ceil((new Date(expiresAt).getTime() - now) / 1000);
+  if (!Number.isFinite(remaining) || remaining <= 0) return "User signed out";
+  return `User session ${formatCountdown(remaining)} left`;
+}
+
 export default function AdminPage() {
   const [items, setItems] = useState<Conversation[]>([]);
   const [totals, setTotals] = useState({
@@ -150,8 +159,6 @@ export default function AdminPage() {
   const [confirmDeleteNoteId, setConfirmDeleteNoteId] = useState<string | null>(null);
   const [sendError, setSendError] = useState("");
   const [updatingFlag, setUpdatingFlag] = useState(false);
-  const [deleting, setDeleting] = useState(false);
-  const [deleteError, setDeleteError] = useState("");
   const [forcingLogout, setForcingLogout] = useState(false);
   const [forceLogoutError, setForceLogoutError] = useState("");
   const [forceLogoutSuccess, setForceLogoutSuccess] = useState("");
@@ -160,14 +167,12 @@ export default function AdminPage() {
   const [resettingPassword, setResettingPassword] = useState(false);
   const [passwordResetError, setPasswordResetError] = useState("");
   const [passwordResetSuccess, setPasswordResetSuccess] = useState("");
-  const [sessionExpiresAt, setSessionExpiresAt] = useState<number | null>(null);
-  const [sessionSeconds, setSessionSeconds] = useState<number | null>(null);
+  const [sessionClock, setSessionClock] = useState(0);
 
   const lastDetailAt = useRef<string | null>(null);
   const typingTimer = useRef<number | null>(null);
   const lastTypingSentAt = useRef(0);
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const autoLogoutStarted = useRef(false);
 
   const scrollToBottom = (smooth = true) => {
     messagesEndRef.current?.scrollIntoView({ behavior: smooth ? "smooth" : "auto" });
@@ -198,49 +203,13 @@ export default function AdminPage() {
   }, []);
 
   useEffect(() => {
-    let active = true;
-    fetch("/api/auth/session", { cache: "no-store" })
-      .then(async (response) => {
-        if (!response.ok) {
-          window.location.href = "/login";
-          return null;
-        }
-        return response.json();
-      })
-      .then((data) => {
-        if (!active || !data) return;
-        const expiry = new Date(data.expiresAt).getTime();
-        if (Number.isFinite(expiry)) setSessionExpiresAt(expiry);
-      })
-      .catch((error) => console.error("Could not load the admin session expiry", error));
-    return () => {
-      active = false;
-    };
-  }, []);
-
-  useEffect(() => {
-    if (sessionExpiresAt === null) return;
-    const updateCountdown = () => {
-      const remaining = Math.max(0, Math.ceil((sessionExpiresAt - Date.now()) / 1000));
-      setSessionSeconds(remaining);
-      if (remaining === 0 && !autoLogoutStarted.current) {
-        autoLogoutStarted.current = true;
-        void fetch("/api/auth/logout", { method: "POST" })
-          .catch((error) => console.error("Could not close the expired admin session", error))
-          .finally(() => {
-            window.location.href = "/login";
-          });
-      }
-    };
-    updateCountdown();
-    const timer = window.setInterval(updateCountdown, 1000);
+    const timer = window.setInterval(() => setSessionClock(Date.now()), 1000);
     return () => window.clearInterval(timer);
-  }, [sessionExpiresAt]);
+  }, []);
 
   const open = useCallback(async (id: string, incremental = false) => {
     setSelected(id);
     if (!incremental) {
-      setDeleteError("");
       setForceLogoutError("");
       setForceLogoutSuccess("");
       setShowPasswordReset(false);
@@ -572,41 +541,6 @@ export default function AdminPage() {
     }
   }
 
-  async function deleteConversation() {
-    if (!selected || !detail || deleting) return;
-    const conversationId = selected;
-    const username = detail.conversation.user.username;
-    if (
-      !window.confirm(
-        `Permanently delete @${username}'s conversation, messages, and private notes? This cannot be undone.`,
-      )
-    ) {
-      return;
-    }
-
-    setDeleting(true);
-    setDeleteError("");
-    try {
-      const response = await fetch(`/api/admin/conversations/${conversationId}`, {
-        method: "DELETE",
-      });
-      if (!response.ok) {
-        const data = await response.json().catch(() => null);
-        throw new Error(data?.error || "Could not delete the conversation.");
-      }
-      setSelected(null);
-      setDetail(null);
-      setText("");
-      setNote("");
-      lastDetailAt.current = null;
-      await load();
-    } catch (error) {
-      setDeleteError(error instanceof Error ? error.message : "Could not delete the conversation.");
-    } finally {
-      setDeleting(false);
-    }
-  }
-
   async function forceLogoutAndClearChat() {
     if (!selected || !detail || forcingLogout) return;
     const conversationId = selected;
@@ -719,13 +653,6 @@ export default function AdminPage() {
               <span className="flex items-center gap-1 rounded-full bg-[#00A884]/20 px-2 py-0.5 text-[10px] font-semibold text-[#00A884]">
                 <span className="size-1.5 rounded-full bg-[#00A884] animate-pulse" />
                 Live
-              </span>
-              <span
-                aria-label={`Automatic sign-out in ${formatCountdown(sessionSeconds)}`}
-                title="Automatic sign-out countdown"
-                className="rounded-full bg-[#202C33] px-2 py-0.5 font-mono text-[10px] font-semibold text-[#FFD279]"
-              >
-                {formatCountdown(sessionSeconds)}
               </span>
             </div>
           </div>
@@ -947,6 +874,9 @@ export default function AdminPage() {
                         <span className="capitalize">{item.status.toLowerCase()}</span>
                         <span>·</span>
                         <span>{item.safetyFlag.replaceAll("_", " ").toLowerCase()}</span>
+                        <span className="truncate text-[#FFD279]">
+                          {formatUserSessionTime(item.userSessionExpiresAt, sessionClock)}
+                        </span>
                       </div>
                     </div>
                   </button>
@@ -1004,6 +934,12 @@ export default function AdminPage() {
                         </span>
                       ) : (
                         "Confidential User Session"
+                      )}
+                    </p>
+                    <p className="text-[11px] text-[#FFD279]">
+                      {formatUserSessionTime(
+                        detail.conversation.userSessionExpiresAt,
+                        sessionClock,
                       )}
                     </p>
                   </div>
@@ -1069,16 +1005,6 @@ export default function AdminPage() {
                   </button>
 
                   <button
-                    onClick={() => void deleteConversation()}
-                    disabled={deleting}
-                    title="Delete conversation permanently"
-                    aria-label="Delete conversation permanently"
-                    className="grid size-8 place-items-center rounded-lg border border-[#5C2329] bg-[#3B1E22] text-[#FF8A8A] transition hover:bg-[#4A1E22] disabled:cursor-not-allowed disabled:opacity-60"
-                  >
-                    {deleting ? <LoaderCircle size={14} className="animate-spin" /> : <Trash2 size={14} />}
-                  </button>
-
-                  <button
                     onClick={() => void forceLogoutAndClearChat()}
                     disabled={forcingLogout}
                     title="Log user out and clear their chat"
@@ -1140,15 +1066,10 @@ export default function AdminPage() {
                     {forceLogoutSuccess}
                   </p>
                 )}
-                {deleteError && (
-                  <p role="alert" className="mx-auto mb-3 w-fit rounded-lg bg-[#3B1E22] px-3 py-2 text-xs text-[#FF8A8A]">
-                    {deleteError}
-                  </p>
-                )}
                 {/* Session Security Banner */}
                 <div className="mx-auto mb-4 w-fit max-w-[85%] rounded-lg bg-[#182229] px-3.5 py-1.5 text-center text-[11px] leading-relaxed text-[#FFD279] shadow-sm">
                   <Lock size={11} className="mr-1.5 inline" />
-                  Admin response session. User-facing conversation is scheduled for auto-clearing upon sign out.
+                  User-facing messages clear when the user signs out; admin history is retained.
                 </div>
 
                 {/* Messages List */}

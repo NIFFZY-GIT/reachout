@@ -27,7 +27,7 @@ export async function POST(request: NextRequest) {
     }
     return NextResponse.json({ error: "The email/username or password is incorrect." }, { status: 401 });
   }
-  await createSession(user.id);
+  await createSession(user.id, user.role);
   await prisma.user.update({ where: { id: user.id }, data: { lastSeen: new Date() } });
   return NextResponse.json({ ok: true, role: user.role });
 }

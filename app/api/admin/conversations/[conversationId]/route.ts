@@ -35,7 +35,19 @@ export async function GET(
   const conversation = await prisma.conversation.findUnique({
     where: { id: conversationId },
     include: {
-      user: { select: { id: true, username: true, email: true } },
+      user: {
+        select: {
+          id: true,
+          username: true,
+          email: true,
+          sessions: {
+            where: { revokedAt: null, expiresAt: { gt: now } },
+            orderBy: { expiresAt: "desc" },
+            take: 1,
+            select: { expiresAt: true },
+          },
+        },
+      },
       adminMessages: {
         where:
           afterDate && !Number.isNaN(afterDate.getTime())
@@ -47,13 +59,20 @@ export async function GET(
     },
   });
   if (!conversation) return NextResponse.json({ error: "Not found" }, { status: 404 });
+  const { user, ...conversationData } = conversation;
   const receipts = await prisma.adminMessage.findMany({
     where: { conversationId, senderRole: "ADMIN" },
     select: { id: true, isRead: true, readAt: true },
   });
   return NextResponse.json({
     conversation: {
-      ...conversation,
+      ...conversationData,
+      user: {
+        id: user.id,
+        username: user.username,
+        email: user.email,
+      },
+      userSessionExpiresAt: user.sessions[0]?.expiresAt ?? null,
       userIsTyping:
         Boolean(conversation.userTypingUntil) &&
         conversation.userTypingUntil!.getTime() > Date.now(),
@@ -78,21 +97,4 @@ export async function PATCH(
     data: parsed.data,
   });
   return NextResponse.json({ conversation });
-}
-
-export async function DELETE(
-  _request: NextRequest,
-  context: { params: Promise<{ conversationId: string }> },
-) {
-  const session = await requireAuth("ADMIN");
-  if (!session) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-  const { conversationId } = await context.params;
-  const deleted = await prisma.$transaction(async (tx) => {
-    await tx.adminNote.deleteMany({ where: { conversationId } });
-    await tx.adminMessage.deleteMany({ where: { conversationId } });
-    await tx.userMessage.deleteMany({ where: { conversationId } });
-    return tx.conversation.deleteMany({ where: { id: conversationId } });
-  });
-  if (deleted.count === 0) return NextResponse.json({ error: "Not found" }, { status: 404 });
-  return NextResponse.json({ ok: true });
 }
