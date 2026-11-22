@@ -34,6 +34,7 @@ export default function ChatPage() {
   const [sendError, setSendError] = useState("");
   const [typing, setTyping] = useState(false);
   const [connectionIssue, setConnectionIssue] = useState(false);
+  const [adminIsOnline, setAdminIsOnline] = useState(false);
   const [sessionExpiresAt, setSessionExpiresAt] = useState<number | null>(null);
   const [sessionSeconds, setSessionSeconds] = useState<number | null>(null);
   const autoLogoutStarted = useRef(false);
@@ -73,6 +74,7 @@ export default function ChatPage() {
       const active = await response.json();
       if (active.conversation.id === conversationId) {
         mergeMessages(active.messages);
+        setAdminIsOnline(active.conversation.adminIsOnline);
         if (active.receipts?.length) {
           const receipts = new Map<string, boolean>(
             active.receipts.map((receipt: { id: string; isRead: boolean }) => [receipt.id, receipt.isRead]),
@@ -110,6 +112,7 @@ export default function ChatPage() {
         }
         const active = await response.json();
         setConversation(active.conversation);
+        setAdminIsOnline(active.conversation.adminIsOnline);
         const receipts = new Map<string, boolean>(
           active.receipts.map((receipt: { id: string; isRead: boolean }) => [receipt.id, receipt.isRead] as const),
         );
@@ -306,8 +309,13 @@ export default function ChatPage() {
             <div className="min-w-0">
               <h1 className="truncate text-[15px] font-semibold">ReachOut Support Team</h1>
               <p className="mt-0.5 flex items-center gap-1 text-xs text-[#8696A0]">
+                <span
+                  className={`size-2 rounded-full ${adminIsOnline ? "bg-[#25D366]" : "bg-[#8696A0]"}`}
+                />
                 <LockKeyhole size={11} />
-                {connectionIssue ? "Reconnecting…" : "Human support · Private session"}
+                {connectionIssue
+                  ? "Reconnecting…"
+                  : `Admin ${adminIsOnline ? "online" : "offline"} · Private session`}
               </p>
             </div>
           </div>
@@ -420,7 +428,7 @@ export default function ChatPage() {
           <div ref={end} />
         </div>
 
-        <div className="shrink-0 bg-[#202C33] px-2 py-2 md:px-4">
+        <div className="shrink-0 bg-[#202C33] px-2 py-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] md:px-4">
           {sendError && (
             <p role="alert" className="mx-auto mb-2 flex max-w-4xl items-center gap-2 px-2 text-xs text-[#FF8A80]">
               <CircleAlert size={14} />
@@ -440,7 +448,8 @@ export default function ChatPage() {
               rows={1}
               maxLength={5000}
               placeholder="Message"
-              className="max-h-32 min-h-12 flex-1 resize-none rounded-3xl border-0 bg-[#2A3942] px-5 py-3 text-[15px] text-[#E9EDEF] outline-none shadow-sm placeholder:text-[#8696A0] focus:ring-2 focus:ring-[#00A884]/50"
+              enterKeyHint="send"
+              className="max-h-32 min-h-12 flex-1 resize-none rounded-3xl border-0 bg-[#2A3942] px-4 py-3 text-base text-[#E9EDEF] outline-none shadow-sm placeholder:text-[#8696A0] focus:ring-2 focus:ring-[#00A884]/50 sm:px-5"
             />
             <button
               onClick={send}

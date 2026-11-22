@@ -162,6 +162,8 @@ export default function AdminPage() {
   const [forcingLogout, setForcingLogout] = useState(false);
   const [forceLogoutError, setForceLogoutError] = useState("");
   const [forceLogoutSuccess, setForceLogoutSuccess] = useState("");
+  const [deletingConversation, setDeletingConversation] = useState(false);
+  const [deleteConversationError, setDeleteConversationError] = useState("");
   const [showPasswordReset, setShowPasswordReset] = useState(false);
   const [newPassword, setNewPassword] = useState("");
   const [resettingPassword, setResettingPassword] = useState(false);
@@ -212,6 +214,7 @@ export default function AdminPage() {
     if (!incremental) {
       setForceLogoutError("");
       setForceLogoutSuccess("");
+      setDeleteConversationError("");
       setShowPasswordReset(false);
       setNewPassword("");
       setPasswordResetError("");
@@ -303,6 +306,24 @@ export default function AdminPage() {
       pusher?.disconnect();
     };
   }, [load]);
+
+  useEffect(() => {
+    const heartbeat = () => {
+      void fetch("/api/auth/heartbeat", { method: "POST" }).then((response) => {
+        if (response.status === 401) window.location.href = "/login";
+      }).catch((error) => console.error("Could not update admin presence", error));
+    };
+    heartbeat();
+    const interval = window.setInterval(heartbeat, 30000);
+    const onVisibilityChange = () => {
+      if (!document.hidden) heartbeat();
+    };
+    document.addEventListener("visibilitychange", onVisibilityChange);
+    return () => {
+      window.clearInterval(interval);
+      document.removeEventListener("visibilitychange", onVisibilityChange);
+    };
+  }, []);
 
   useEffect(() => {
     if (!selected) return;
@@ -584,6 +605,44 @@ export default function AdminPage() {
     }
   }
 
+  async function deleteConversation() {
+    if (!selected || !detail || deletingConversation) return;
+    const conversationId = selected;
+    const username = detail.conversation.user.username;
+    if (
+      !window.confirm(
+        `Permanently delete @${username}'s conversation, all messages, and private notes? Their active sessions will be signed out. This cannot be undone.`,
+      )
+    ) {
+      return;
+    }
+
+    setDeletingConversation(true);
+    setDeleteConversationError("");
+    try {
+      const response = await fetch(`/api/admin/conversations/${conversationId}`, {
+        method: "DELETE",
+      });
+      const data = await response.json().catch(() => null);
+      if (!response.ok) {
+        throw new Error(data?.error || "Could not delete the conversation.");
+      }
+
+      setSelected(null);
+      setDetail(null);
+      setText("");
+      setNote("");
+      lastDetailAt.current = null;
+      await load();
+    } catch (error) {
+      setDeleteConversationError(
+        error instanceof Error ? error.message : "Could not delete the conversation.",
+      );
+    } finally {
+      setDeletingConversation(false);
+    }
+  }
+
   async function resetUserPassword(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!detail || resettingPassword) return;
@@ -640,17 +699,17 @@ export default function AdminPage() {
   const userIsTyping = Boolean(detail?.conversation.userIsTyping);
 
   return (
-    <main className="flex h-screen w-screen flex-col overflow-hidden bg-[#0B141A] text-[#E9EDEF]">
+    <main className="flex h-[100dvh] w-screen flex-col overflow-hidden bg-[#0B141A] text-[#E9EDEF]">
       {/* Top Console Navigation Bar */}
-      <header className="flex h-15 shrink-0 items-center justify-between border-b border-[#222E35] bg-[#111B21] px-4 md:px-6">
-        <div className="flex items-center gap-3">
+      <header className="flex h-14 shrink-0 items-center justify-between gap-2 border-b border-[#222E35] bg-[#111B21] px-3 sm:h-15 sm:px-4 md:px-6">
+        <div className="flex min-w-0 items-center gap-2 sm:gap-3">
           <div className="grid size-9 place-items-center rounded-xl bg-[#00A884] text-[#0B141A] shadow-[0_2px_10px_rgba(0,168,132,0.35)]">
             <MessageCircle size={19} />
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <h1 className="text-base font-bold text-[#E9EDEF]">ReachOut Admin Console</h1>
-              <span className="flex items-center gap-1 rounded-full bg-[#00A884]/20 px-2 py-0.5 text-[10px] font-semibold text-[#00A884]">
+              <h1 className="truncate text-sm font-bold text-[#E9EDEF] sm:text-base">ReachOut Admin Console</h1>
+              <span className="hidden items-center gap-1 rounded-full bg-[#00A884]/20 px-2 py-0.5 text-[10px] font-semibold text-[#00A884] sm:flex">
                 <span className="size-1.5 rounded-full bg-[#00A884] animate-pulse" />
                 Live
               </span>
@@ -706,7 +765,7 @@ export default function AdminPage() {
           </button>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex shrink-0 items-center gap-1 sm:gap-2">
           <button
             onClick={() => void load()}
             title="Refresh conversations"
@@ -895,8 +954,8 @@ export default function AdminPage() {
           {detail ? (
             <>
               {/* Active Conversation Top Bar */}
-              <div className="flex min-h-16 shrink-0 items-center justify-between border-b border-[#222E35] bg-[#111B21] px-4 py-2 md:px-5">
-                <div className="flex items-center gap-3 min-w-0">
+              <div className="flex min-h-16 shrink-0 flex-wrap items-center justify-between gap-2 border-b border-[#222E35] bg-[#111B21] px-3 py-2 sm:px-4 md:flex-nowrap md:px-5">
+                <div className="flex min-w-0 flex-1 items-center gap-2 sm:gap-3 md:flex-initial">
                   <button
                     onClick={() => setSelected(null)}
                     className="grid size-8 place-items-center rounded-lg text-[#8696A0] hover:text-[#E9EDEF] md:hidden"
@@ -946,14 +1005,14 @@ export default function AdminPage() {
                 </div>
 
                 {/* Right Actions: Safety Flag Dropdown, Resolve Toggle, Notes Toggle */}
-                <div className="flex items-center gap-2">
+                <div className="flex w-full flex-wrap items-center justify-end gap-1 md:w-auto md:flex-nowrap md:gap-2">
                   {/* Safety Flag Selector */}
                   <div className="relative">
                     <select
                       value={detail.conversation.safetyFlag}
                       disabled={updatingFlag}
                       onChange={(e) => void update({ safetyFlag: e.target.value })}
-                      className={`cursor-pointer rounded-lg border px-2.5 py-1.5 text-xs font-semibold outline-none transition ${
+                      className={`max-w-[155px] cursor-pointer rounded-lg border px-2 py-1.5 text-[11px] font-semibold outline-none transition sm:max-w-none sm:px-2.5 sm:text-xs ${
                         detail.conversation.safetyFlag === "URGENT_SAFETY_CONCERN"
                           ? "border-[#5C2329] bg-[#3B1E22] text-[#FF8A8A]"
                           : detail.conversation.safetyFlag === "NEEDS_ATTENTION"
@@ -1019,6 +1078,20 @@ export default function AdminPage() {
                   </button>
 
                   <button
+                    onClick={() => void deleteConversation()}
+                    disabled={deletingConversation}
+                    title="Permanently delete conversation"
+                    aria-label="Permanently delete conversation"
+                    className="grid size-8 place-items-center rounded-lg border border-[#5C2329] bg-[#3B1E22] text-[#FF8A8A] transition hover:bg-[#51252B] disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    {deletingConversation ? (
+                      <LoaderCircle size={14} className="animate-spin" />
+                    ) : (
+                      <Trash2 size={14} />
+                    )}
+                  </button>
+
+                  <button
                     onClick={() => {
                       setPasswordResetError("");
                       setPasswordResetSuccess("");
@@ -1056,6 +1129,14 @@ export default function AdminPage() {
                   backgroundSize: "28px 28px",
                 }}
               >
+                {deleteConversationError && (
+                  <p
+                    role="alert"
+                    className="mx-auto mb-3 w-fit rounded-lg bg-[#3B1E22] px-3 py-2 text-xs text-[#FF8A8A]"
+                  >
+                    {deleteConversationError}
+                  </p>
+                )}
                 {forceLogoutError && (
                   <p role="alert" className="mx-auto mb-3 w-fit rounded-lg bg-[#3B1E22] px-3 py-2 text-xs text-[#FF8A8A]">
                     {forceLogoutError}

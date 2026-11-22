@@ -64,11 +64,22 @@ export async function GET(request: NextRequest) {
     where: { conversationId: conversation.id, senderRole: "USER" },
     select: { id: true, isRead: true, readAt: true },
   });
+  const presenceNow = new Date();
+  const activeAdminSession = await prisma.userSession.findFirst({
+    where: {
+      revokedAt: null,
+      expiresAt: { gt: presenceNow },
+      lastActivityAt: { gt: new Date(presenceNow.getTime() - 90 * 1000) },
+      user: { is: { role: "ADMIN", isActive: true } },
+    },
+    select: { id: true },
+  });
   return NextResponse.json({
     conversation: {
       id: conversation.id,
       status: "OPEN",
       adminTypingUntil: conversation.adminTypingUntil,
+      adminIsOnline: Boolean(activeAdminSession),
       adminIsTyping:
         Boolean(conversation.adminTypingUntil) &&
         conversation.adminTypingUntil!.getTime() > Date.now(),

@@ -98,3 +98,39 @@ export async function PATCH(
   });
   return NextResponse.json({ conversation });
 }
+
+export async function DELETE(
+  _request: NextRequest,
+  context: { params: Promise<{ conversationId: string }> },
+) {
+  const session = await requireAuth("ADMIN");
+  if (!session) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+
+  const { conversationId } = await context.params;
+  const conversation = await prisma.conversation.findUnique({
+    where: { id: conversationId },
+    select: { userId: true, user: { select: { role: true } } },
+  });
+  if (!conversation || conversation.user.role !== "USER") {
+    return NextResponse.json({ error: "Conversation not found." }, { status: 404 });
+  }
+
+  const deleted = await prisma.$transaction(async (tx) => {
+    const result = await tx.conversation.deleteMany({
+      where: { id: conversationId },
+    });
+    if (result.count === 0) return false;
+
+    await tx.userSession.updateMany({
+      where: { userId: conversation.userId, revokedAt: null },
+      data: { revokedAt: new Date() },
+    });
+    return true;
+  });
+
+  if (!deleted) {
+    return NextResponse.json({ error: "Conversation not found." }, { status: 404 });
+  }
+
+  return NextResponse.json({ ok: true });
+}

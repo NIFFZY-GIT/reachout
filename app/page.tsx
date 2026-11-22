@@ -15,7 +15,7 @@ export default function Home() {
     <main className="min-h-screen bg-[#0B141A] text-[#E9EDEF]">
       {/* Navigation */}
       <nav className="sticky top-0 z-40 border-b border-[#222E35] bg-[#111B21]/90 backdrop-blur">
-        <div className="container-shell flex h-18 items-center justify-between">
+        <div className="container-shell flex h-16 items-center justify-between sm:h-18">
           <Link href="/" className="flex items-center gap-2 text-xl font-bold text-[#E9EDEF]">
             <span className="grid size-9 place-items-center rounded-xl bg-[#00A884] text-[#0B141A] shadow-[0_2px_10px_rgba(0,168,132,0.35)]">
               <MessageCircle size={20} />
@@ -32,21 +32,35 @@ export default function Home() {
               Get Support
             </Link>
           </div>
+          <div className="flex items-center gap-2 md:hidden">
+            <Link
+              href="/login"
+              className="rounded-lg px-2.5 py-2 text-sm font-semibold text-[#00A884]"
+            >
+              Sign in
+            </Link>
+            <Link
+              href="/register"
+              className="rounded-lg bg-[#00A884] px-3 py-2 text-sm font-semibold text-[#0B141A]"
+            >
+              Get support
+            </Link>
+          </div>
         </div>
       </nav>
 
       {/* Hero Section */}
       <section className="relative overflow-hidden bg-gradient-to-b from-[#111B21] via-[#0B141A] to-[#0B141A]">
-        <div className="container-shell grid items-center gap-12 py-20 md:grid-cols-[1.15fr_.85fr] md:py-28">
+        <div className="container-shell grid items-center gap-10 py-12 sm:py-16 md:grid-cols-[1.15fr_.85fr] md:gap-12 md:py-28">
           <div>
             <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-[#00A884]/30 bg-[#202C33] px-4 py-2 text-sm font-semibold text-[#00A884]">
               <ShieldCheck size={16} />
               A safe place to be heard
             </div>
-            <h1 className="max-w-2xl text-4xl font-bold leading-[1.08] tracking-tight text-[#E9EDEF] md:text-6xl">
+            <h1 className="max-w-2xl text-3xl font-bold leading-[1.08] tracking-tight text-[#E9EDEF] sm:text-4xl md:text-6xl">
               You don&apos;t have to carry life&apos;s heaviest moments alone.
             </h1>
-            <p className="mt-6 max-w-xl text-lg leading-8 text-[#8696A0]">
+            <p className="mt-5 max-w-xl text-base leading-7 text-[#8696A0] sm:mt-6 sm:text-lg sm:leading-8">
               Whether you are wrestling with anxiety, personal heartbreak, depression, feeling overwhelmed, or simply need someone trustworthy who will truly listen, ReachOut provides a safe and confidential space to speak with our compassionate support team.
             </p>
             <div className="mt-8 flex flex-wrap gap-3 text-sm text-[#8696A0]">
@@ -107,7 +121,7 @@ export default function Home() {
       </section>
 
       {/* How We Help Section */}
-      <section id="help" className="border-t border-[#222E35] bg-[#0B141A] py-20">
+      <section id="help" className="border-t border-[#222E35] bg-[#0B141A] py-14 md:py-20">
         <div className="container-shell">
           <div className="mx-auto max-w-xl text-center">
             <p className="font-semibold text-[#00A884]">How we help</p>
@@ -134,7 +148,7 @@ export default function Home() {
       </section>
 
       {/* About Section */}
-      <section id="about" className="border-y border-[#222E35] bg-[#111B21] py-20">
+      <section id="about" className="border-y border-[#222E35] bg-[#111B21] py-14 md:py-20">
         <div className="container-shell grid gap-10 md:grid-cols-2 md:items-center">
           <div>
             <p className="font-semibold text-[#00A884]">About ReachOut</p>
@@ -149,7 +163,7 @@ export default function Home() {
       </section>
 
       {/* How it Works Section */}
-      <section id="works" className="bg-[#0B141A] py-20">
+      <section id="works" className="bg-[#0B141A] py-14 md:py-20">
         <div className="container-shell">
           <h2 className="text-center text-3xl font-bold text-[#E9EDEF]">How it works</h2>
           <div className="mt-10 grid gap-6 md:grid-cols-3">

@@ -57,16 +57,16 @@ export default function DashboardPage() {
     <main className="min-h-screen bg-[#0B141A] text-[#E9EDEF]">
       {/* Top Navigation */}
       <nav className="border-b border-[#222E35] bg-[#111B21]">
-        <div className="container-shell flex h-16 items-center justify-between">
+        <div className="container-shell flex h-16 items-center justify-between gap-2">
           <Link href="/" className="inline-flex items-center gap-2 font-bold text-[#E9EDEF]">
             <span className="grid size-8 place-items-center rounded-lg bg-[#00A884] text-[#0B141A]">
               <MessageCircle size={18} />
             </span>
             ReachOut
           </Link>
-          <div className="flex items-center gap-4">
+          <div className="flex shrink-0 items-center gap-1.5 sm:gap-4">
             {user && (
-              <span className="text-xs text-[#8696A0]">
+              <span className="hidden max-w-36 truncate text-xs text-[#8696A0] sm:inline">
                 Signed in as <b className="text-[#E9EDEF]">@{user.username}</b>
               </span>
             )}
@@ -87,7 +87,7 @@ export default function DashboardPage() {
       </nav>
 
       {/* Main Dashboard Space */}
-      <div className="container-shell py-12">
+      <div className="container-shell py-8 sm:py-12">
         <div className="flex flex-col gap-2">
           <div className="inline-flex w-fit items-center gap-2 rounded-full border border-[#00A884]/30 bg-[#202C33] px-3.5 py-1 text-xs font-semibold text-[#00A884]">
             <Lock size={12} />
@@ -132,7 +132,7 @@ export default function DashboardPage() {
         <div className="mt-10">
           <Link
             href="/chat"
-            className="inline-flex items-center gap-2.5 rounded-xl bg-[#00A884] px-7 py-4 text-base font-semibold text-[#0B141A] shadow-[0_4px_18px_rgba(0,168,132,0.35)] transition hover:bg-[#02906f]"
+            className="inline-flex w-full items-center justify-center gap-2.5 rounded-xl bg-[#00A884] px-5 py-4 text-base font-semibold text-[#0B141A] shadow-[0_4px_18px_rgba(0,168,132,0.35)] transition hover:bg-[#02906f] sm:w-auto sm:px-7"
           >
             <MessageCircle size={20} />
             <span>Open Support Chat</span>
