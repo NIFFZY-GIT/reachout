@@ -42,9 +42,13 @@ export default function LoginPage() {
           password,
         }),
       });
-      const data = await response.json();
+      const data = await response.json().catch(() => null);
       if (!response.ok) {
-        setError(data.error || "Sign in failed. Please check your credentials.");
+        setError(
+          data?.error || "The sign-in service returned an error. Please try again shortly.",
+        );
+      } else if (!data) {
+        setError("The sign-in service returned an invalid response. Please try again.");
       } else {
         router.push(data.role === "ADMIN" ? "/admin" : "/dashboard");
       }

@@ -125,8 +125,14 @@ function formatCountdown(value: number | null) {
   return `${minutes}:${seconds}`;
 }
 
-function formatUserSessionTime(expiresAt: string | null | undefined, now: number) {
+function formatUserSessionTime(
+  expiresAt: string | null | undefined,
+  now: number,
+  timeoutEnabled: boolean | null,
+) {
   if (!expiresAt) return "User signed out";
+  if (timeoutEnabled === false) return "10-minute timer off";
+  if (timeoutEnabled === null) return "Checking timeout setting";
   if (!now) return "Checking user session";
   const remaining = Math.ceil((new Date(expiresAt).getTime() - now) / 1000);
   if (!Number.isFinite(remaining) || remaining <= 0) return "User signed out";
@@ -170,6 +176,9 @@ export default function AdminPage() {
   const [passwordResetError, setPasswordResetError] = useState("");
   const [passwordResetSuccess, setPasswordResetSuccess] = useState("");
   const [sessionClock, setSessionClock] = useState(0);
+  const [sessionTimeoutEnabled, setSessionTimeoutEnabled] = useState<boolean | null>(null);
+  const [updatingSessionTimeout, setUpdatingSessionTimeout] = useState(false);
+  const [sessionTimeoutError, setSessionTimeoutError] = useState("");
 
   const lastDetailAt = useRef<string | null>(null);
   const typingTimer = useRef<number | null>(null);
@@ -207,6 +216,37 @@ export default function AdminPage() {
   useEffect(() => {
     const timer = window.setInterval(() => setSessionClock(Date.now()), 1000);
     return () => window.clearInterval(timer);
+  }, []);
+
+  useEffect(() => {
+    let active = true;
+    const loadSessionTimeout = async () => {
+      try {
+        const response = await fetch("/api/admin/settings/session-timeout", {
+          cache: "no-store",
+        });
+        const data = await response.json().catch(() => null);
+        if (!response.ok) {
+          throw new Error(data?.error || "Could not load the session timer setting.");
+        }
+        if (active) {
+          setSessionTimeoutEnabled(data.enabled);
+          setSessionTimeoutError("");
+        }
+      } catch (error) {
+        if (active) {
+          setSessionTimeoutError(
+            error instanceof Error ? error.message : "Could not load the session timer setting.",
+          );
+        }
+      }
+    };
+    void loadSessionTimeout();
+    const timer = window.setInterval(loadSessionTimeout, 15000);
+    return () => {
+      active = false;
+      window.clearInterval(timer);
+    };
   }, []);
 
   const open = useCallback(async (id: string, incremental = false) => {
@@ -682,6 +722,32 @@ export default function AdminPage() {
     window.location.href = "/login";
   }
 
+  async function toggleSessionTimeout() {
+    if (sessionTimeoutEnabled === null || updatingSessionTimeout) return;
+    setUpdatingSessionTimeout(true);
+    setSessionTimeoutError("");
+    try {
+      const response = await fetch("/api/admin/settings/session-timeout", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ enabled: !sessionTimeoutEnabled }),
+      });
+      const data = await response.json().catch(() => null);
+      if (!response.ok) {
+        throw new Error(data?.error || "Could not update the session timer setting.");
+      }
+      setSessionTimeoutEnabled(data.enabled);
+      await load();
+      if (selected) await open(selected, true);
+    } catch (error) {
+      setSessionTimeoutError(
+        error instanceof Error ? error.message : "Could not update the session timer setting.",
+      );
+    } finally {
+      setUpdatingSessionTimeout(false);
+    }
+  }
+
   // Filtered list
   const filtered = items.filter((item) => {
     const matchesSearch = `${item.user.username} ${item.lastMessage || ""}`
@@ -790,6 +856,46 @@ export default function AdminPage() {
             selected ? "hidden md:flex" : "flex"
           }`}
         >
+          <div className="flex items-center justify-between gap-3 border-b border-[#222E35] px-3 py-2.5">
+            <div className="min-w-0">
+              <p className="text-xs font-semibold text-[#E9EDEF]">10-minute user timer</p>
+              <p className="mt-0.5 text-[10px] text-[#8696A0]">
+                {sessionTimeoutEnabled === true
+                  ? "Users sign out 10 minutes after activation."
+                  : sessionTimeoutEnabled === false
+                    ? "Off by default. User sessions do not time out."
+                    : "Loading timer setting…"}
+              </p>
+            </div>
+            <button
+              type="button"
+              role="switch"
+              aria-checked={sessionTimeoutEnabled === true}
+              aria-label="10-minute user session timer"
+              onClick={() => void toggleSessionTimeout()}
+              disabled={sessionTimeoutEnabled === null || updatingSessionTimeout}
+              className={`relative h-7 w-14 shrink-0 rounded-full border transition disabled:cursor-wait disabled:opacity-60 ${
+                sessionTimeoutEnabled
+                  ? "border-[#00A884] bg-[#005C4B]"
+                  : "border-[#2A3942] bg-[#202C33]"
+              }`}
+            >
+              <span
+                className={`absolute top-0.5 grid size-5 place-items-center rounded-full text-[9px] font-bold transition-all ${
+                  sessionTimeoutEnabled
+                    ? "left-[30px] bg-[#00A884] text-[#0B141A]"
+                    : "left-0.5 bg-[#8696A0] text-[#0B141A]"
+                }`}
+              >
+                {updatingSessionTimeout ? <LoaderCircle size={12} className="animate-spin" /> : null}
+              </span>
+            </button>
+          </div>
+          {sessionTimeoutError && (
+            <p role="alert" className="border-b border-[#222E35] px-3 py-2 text-[11px] text-[#FF8A8A]">
+              {sessionTimeoutError}
+            </p>
+          )}
           {/* Search Bar */}
           <div className="p-3 border-b border-[#222E35]">
             <div className="flex items-center gap-2 rounded-xl border border-[#2A3942] bg-[#202C33] px-3 py-2 text-sm">
@@ -934,7 +1040,11 @@ export default function AdminPage() {
                         <span>·</span>
                         <span>{item.safetyFlag.replaceAll("_", " ").toLowerCase()}</span>
                         <span className="truncate text-[#FFD279]">
-                          {formatUserSessionTime(item.userSessionExpiresAt, sessionClock)}
+                          {formatUserSessionTime(
+                            item.userSessionExpiresAt,
+                            sessionClock,
+                            sessionTimeoutEnabled,
+                          )}
                         </span>
                       </div>
                     </div>
@@ -999,6 +1109,7 @@ export default function AdminPage() {
                       {formatUserSessionTime(
                         detail.conversation.userSessionExpiresAt,
                         sessionClock,
+                        sessionTimeoutEnabled,
                       )}
                     </p>
                   </div>

@@ -1,10 +1,12 @@
 import { NextResponse } from "next/server";
-import { requireAuth, touchSession } from "@/lib/auth";
+import { isUserSessionTimeoutEnabled, requireAuth, touchSession } from "@/lib/auth";
 
 export async function GET() {
   const session = await requireAuth();
   if (!session) return NextResponse.json({ authenticated: false }, { status: 401 });
   await touchSession();
+  const sessionTimeoutEnabled =
+    session.user.role === "USER" && (await isUserSessionTimeoutEnabled());
   return NextResponse.json({
     authenticated: true,
     user: {
@@ -12,6 +14,7 @@ export async function GET() {
       username: session.user.username,
       role: session.user.role,
     },
-    expiresAt: session.expiresAt.toISOString(),
+    sessionTimeoutEnabled,
+    expiresAt: sessionTimeoutEnabled ? session.expiresAt.toISOString() : null,
   });
 }

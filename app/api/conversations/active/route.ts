@@ -10,8 +10,10 @@ export async function GET(request: NextRequest) {
     where: { userId: session.userId, status: { not: "ARCHIVED" } },
     orderBy: { createdAt: "desc" },
   });
+  let isNewConversation = false;
   if (!conversation) {
     conversation = await prisma.conversation.create({ data: { userId: session.userId } });
+    isNewConversation = true;
   } else {
     const activeConversation = conversation;
     const now = new Date();
@@ -78,6 +80,7 @@ export async function GET(request: NextRequest) {
     conversation: {
       id: conversation.id,
       status: "OPEN",
+      isNewConversation,
       adminTypingUntil: conversation.adminTypingUntil,
       adminIsOnline: Boolean(activeAdminSession),
       adminIsTyping:

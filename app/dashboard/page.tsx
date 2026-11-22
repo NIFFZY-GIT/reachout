@@ -14,18 +14,41 @@ export default function DashboardPage() {
   const [user, setUser] = useState<{ username: string } | null>(null);
   const [sessionExpiresAt, setSessionExpiresAt] = useState<number | null>(null);
   const [sessionSeconds, setSessionSeconds] = useState<number | null>(null);
+  const [sessionTimeoutEnabled, setSessionTimeoutEnabled] = useState(false);
 
   useEffect(() => {
-    fetch("/api/auth/session")
-      .then((r) => (r.ok ? r.json() : null))
-      .then((data) => {
-        if (!data) location.href = "/login";
-        else {
-          setUser(data.user);
-          const expiry = new Date(data.expiresAt).getTime();
-          if (Number.isFinite(expiry)) setSessionExpiresAt(expiry);
+    let active = true;
+    const syncSession = async () => {
+      try {
+        const response = await fetch("/api/auth/session", { cache: "no-store" });
+        if (response.status === 401) {
+          await fetch("/api/auth/logout", { method: "POST" });
+          location.href = "/login";
+          return;
         }
-      });
+        if (!response.ok) return;
+        const data = await response.json();
+        if (!active) return;
+        const timeoutEnabled = data.sessionTimeoutEnabled === true;
+        setUser(data.user);
+        setSessionTimeoutEnabled(timeoutEnabled);
+        const expiry = timeoutEnabled ? new Date(data.expiresAt).getTime() : NaN;
+        if (Number.isFinite(expiry)) {
+          setSessionExpiresAt(expiry);
+        } else {
+          setSessionExpiresAt(null);
+          setSessionSeconds(null);
+        }
+      } catch (error) {
+        console.error("Could not refresh the user session", error);
+      }
+    };
+    void syncSession();
+    const timer = window.setInterval(syncSession, 10000);
+    return () => {
+      active = false;
+      window.clearInterval(timer);
+    };
   }, []);
 
   useEffect(() => {
@@ -71,10 +94,14 @@ export default function DashboardPage() {
               </span>
             )}
             <span
-              aria-label={`Automatic sign-out in ${formatCountdown(sessionSeconds)}`}
+              aria-label={
+                sessionTimeoutEnabled
+                  ? `Automatic sign-out in ${formatCountdown(sessionSeconds)}`
+                  : "Automatic sign-out timer off"
+              }
               className="rounded-full bg-[#202C33] px-2.5 py-1.5 font-mono text-xs font-semibold text-[#FFD279]"
             >
-              {formatCountdown(sessionSeconds)}
+              {sessionTimeoutEnabled ? formatCountdown(sessionSeconds) : "Timer off"}
             </span>
             <button
               onClick={logout}

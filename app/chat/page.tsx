@@ -28,6 +28,7 @@ function formatCountdown(value: number | null) {
 
 export default function ChatPage() {
   const [conversation, setConversation] = useState<{ id: string } | null>(null);
+  const [showRetentionNotice, setShowRetentionNotice] = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);
   const [text, setText] = useState("");
   const [sending, setSending] = useState(false);
@@ -37,6 +38,7 @@ export default function ChatPage() {
   const [adminIsOnline, setAdminIsOnline] = useState(false);
   const [sessionExpiresAt, setSessionExpiresAt] = useState<number | null>(null);
   const [sessionSeconds, setSessionSeconds] = useState<number | null>(null);
+  const [sessionTimeoutEnabled, setSessionTimeoutEnabled] = useState(false);
   const autoLogoutStarted = useRef(false);
   const end = useRef<HTMLDivElement>(null);
   const latestMessageAt = useRef<string | null>(null);
@@ -103,8 +105,15 @@ export default function ChatPage() {
           window.location.href = "/login";
           return;
         }
-        const expiry = new Date(data.expiresAt).getTime();
-        if (Number.isFinite(expiry)) setSessionExpiresAt(expiry);
+        const timeoutEnabled = data.sessionTimeoutEnabled === true;
+        setSessionTimeoutEnabled(timeoutEnabled);
+        const expiry = timeoutEnabled ? new Date(data.expiresAt).getTime() : NaN;
+        if (Number.isFinite(expiry)) {
+          setSessionExpiresAt(expiry);
+        } else {
+          setSessionExpiresAt(null);
+          setSessionSeconds(null);
+        }
         const response = await fetch("/api/conversations/active");
         if (!response.ok) {
           window.location.href = "/login";
@@ -112,6 +121,7 @@ export default function ChatPage() {
         }
         const active = await response.json();
         setConversation(active.conversation);
+        setShowRetentionNotice(active.conversation.isNewConversation === true);
         setAdminIsOnline(active.conversation.adminIsOnline);
         const receipts = new Map<string, boolean>(
           active.receipts.map((receipt: { id: string; isRead: boolean }) => [receipt.id, receipt.isRead] as const),
@@ -124,6 +134,36 @@ export default function ChatPage() {
           latestMessageAt.current = active.messages[active.messages.length - 1].createdAt;
         }
       });
+  }, []);
+
+  useEffect(() => {
+    const syncSessionTimeout = async () => {
+      try {
+        const response = await fetch("/api/auth/session", { cache: "no-store" });
+        if (response.status === 401) {
+          if (!autoLogoutStarted.current) {
+            autoLogoutStarted.current = true;
+            await logout();
+          }
+          return;
+        }
+        if (!response.ok) return;
+        const data = await response.json();
+        const timeoutEnabled = data.sessionTimeoutEnabled === true;
+        setSessionTimeoutEnabled(timeoutEnabled);
+        const expiry = timeoutEnabled ? new Date(data.expiresAt).getTime() : NaN;
+        if (Number.isFinite(expiry)) {
+          setSessionExpiresAt(expiry);
+        } else {
+          setSessionExpiresAt(null);
+          setSessionSeconds(null);
+        }
+      } catch (error) {
+        console.error("Could not refresh the user session timer", error);
+      }
+    };
+    const timer = window.setInterval(syncSessionTimeout, 10000);
+    return () => window.clearInterval(timer);
   }, []);
 
   useEffect(() => {
@@ -321,11 +361,15 @@ export default function ChatPage() {
           </div>
           <div className="flex shrink-0 items-center gap-1">
             <span
-              aria-label={`Automatic sign-out in ${formatCountdown(sessionSeconds)}`}
+              aria-label={
+                sessionTimeoutEnabled
+                  ? `Automatic sign-out in ${formatCountdown(sessionSeconds)}`
+                  : "Automatic sign-out timer off"
+              }
               title="Automatic sign-out countdown"
               className="rounded-full bg-[#182229] px-2.5 py-2 font-mono text-xs font-semibold text-[#FFD279]"
             >
-              {formatCountdown(sessionSeconds)}
+              {sessionTimeoutEnabled ? formatCountdown(sessionSeconds) : "Timer off"}
             </span>
             <button
               onClick={logout}
@@ -352,7 +396,7 @@ export default function ChatPage() {
               </div>
               <h2 className="mt-3 text-sm font-bold text-[#E9EDEF]">Private conversation</h2>
               <p className="mt-2 text-xs leading-5 text-[#8696A0]">
-                Please avoid screenshots or screen recordings. You are speaking with a real support administrator.
+                Signing out clears messages from your view, but support administrators retain the conversation history. Please avoid screenshots or screen recordings.
               </p>
             </div>
           )}
@@ -361,7 +405,7 @@ export default function ChatPage() {
             {messages.length > 0 && (
               <div className="mx-auto mb-3 w-fit max-w-[88%] rounded-lg bg-[#182229] px-3 py-2 text-center text-[11px] leading-4 text-[#FFD279] shadow-sm">
                 <LockKeyhole size={10} className="mr-1 inline" />
-                Messages are private. Avoid sharing sensitive screenshots or recordings.
+                Signing out clears messages from your view, but support administrators retain the conversation history. Please avoid sharing sensitive screenshots or recordings.
               </div>
             )}
             {messages.map((message, index) => {
@@ -462,6 +506,41 @@ export default function ChatPage() {
           </div>
         </div>
       </div>
+
+      {showRetentionNotice && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
+          <section
+            role="alertdialog"
+            aria-modal="true"
+            aria-labelledby="chat-retention-title"
+            aria-describedby="chat-retention-description"
+            className="w-full max-w-md rounded-2xl border border-[#2A3942] bg-[#111B21] p-6 text-[#E9EDEF] shadow-2xl"
+          >
+            <div className="mb-4 grid size-11 place-items-center rounded-xl bg-[#FFD279]/15 text-[#FFD279]">
+              <LockKeyhole size={21} />
+            </div>
+            <p className="text-xs font-semibold uppercase tracking-wide text-[#FFD279]">
+              Important chat notice
+            </p>
+            <h2 id="chat-retention-title" className="mt-2 text-xl font-bold">
+              About your chat history
+            </h2>
+            <p
+              id="chat-retention-description"
+              className="mt-3 text-sm leading-6 text-[#B7C3CA]"
+            >
+              When you sign out, messages are automatically removed from your view. Support
+              administrators can still view the full conversation history, including your messages.
+            </p>
+            <button
+              onClick={() => setShowRetentionNotice(false)}
+              className="mt-6 w-full rounded-xl bg-[#00A884] px-4 py-3 text-sm font-semibold text-[#0B141A] transition hover:bg-[#02906f]"
+            >
+              I understand
+            </button>
+          </section>
+        </div>
+      )}
 
     </main>
   );

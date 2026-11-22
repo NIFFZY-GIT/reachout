@@ -129,3 +129,8 @@ model AdminNote {
 
   @@index([conversationId])
 }
+
+model AppSetting {
+  id                         String  @id @default("global")
+  userSessionTimeoutEnabled  Boolean @default(false)
+}
