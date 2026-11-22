@@ -14,7 +14,6 @@ async function main() {
     create: {
       email,
       username: "reachout-admin",
-      displayName: "ReachOut Support",
       passwordHash,
       role: Role.ADMIN,
     },

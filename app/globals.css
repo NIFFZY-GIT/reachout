@@ -1,26 +1,111 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #0B141A;
+  --surface: #111B21;
+  --surface-card: #202C33;
+  --surface-input: #2A3942;
+  --brand: #00A884;
+  --brand-vivid: #25D366;
+  --brand-bubble: #005C4B;
+  --brand-dark: #075E54;
+  --ink: #E9EDEF;
+  --muted: #8696A0;
+  --dim: #667781;
+  --border: #222E35;
+  --border-light: #2A3942;
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
+  --color-brand: var(--brand);
+  --color-brand-vivid: var(--brand-vivid);
+  --color-brand-bubble: var(--brand-bubble);
+  --color-brand-dark: var(--brand-dark);
+  --color-ink: var(--ink);
+  --color-muted: var(--muted);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+* {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+  color-scheme: dark;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  margin: 0;
+  background-color: #0B141A;
+  color: #E9EDEF;
+  font-family: var(--font-geist-sans), Arial, sans-serif;
+  color-scheme: dark;
+}
+
+::selection {
+  background-color: #005C4B;
+  color: #E9EDEF;
+}
+
+/* Custom WhatsApp style scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #2A3942;
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #3B4A54;
+}
+
+a {
+  text-decoration: none;
+}
+
+button, input, textarea, select {
+  font: inherit;
+}
+
+.container-shell {
+  width: min(1120px, calc(100% - 32px));
+  margin-inline: auto;
+}
+
+.chat-protected {
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+button, a.rounded-xl, a.inline-flex {
+  transition: transform 150ms ease, background-color 150ms ease, box-shadow 150ms ease, border-color 150ms ease;
+}
+
+button:active, a.rounded-xl:active, a.inline-flex:active {
+  transform: scale(.97);
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.typing-dot {
+  display: inline-block;
+  width: 4px;
+  height: 4px;
+  border-radius: 9999px;
+  background: #8696A0;
+  animation: typingBounce 900ms ease-in-out infinite;
+}
+
+@keyframes typingBounce {
+  0%, 60%, 100% { transform: translateY(0); opacity: .5; }
+  30% { transform: translateY(-4px); opacity: 1; }
 }
