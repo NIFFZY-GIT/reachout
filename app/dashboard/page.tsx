@@ -2,6 +2,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { MessageCircle, ShieldCheck, Clock3, ArrowRight, Lock } from "lucide-react";
+import { useSignOutOnPageExit } from "@/lib/use-sign-out-on-page-exit";
 
 function formatCountdown(value: number | null) {
   if (value === null) return "--:--";
@@ -11,6 +12,8 @@ function formatCountdown(value: number | null) {
 }
 
 export default function DashboardPage() {
+  useSignOutOnPageExit();
+
   const [user, setUser] = useState<{ username: string } | null>(null);
   const [sessionExpiresAt, setSessionExpiresAt] = useState<number | null>(null);
   const [sessionSeconds, setSessionSeconds] = useState<number | null>(null);

@@ -3,6 +3,7 @@ import { Fragment } from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import Pusher from "pusher-js";
 import { ArrowLeft, CheckCheck, CircleAlert, LoaderCircle, LockKeyhole, Send, ShieldAlert } from "lucide-react";
+import { useSignOutOnPageExit } from "@/lib/use-sign-out-on-page-exit";
 
 type Message = {
   id: string;
@@ -27,6 +28,8 @@ function formatCountdown(value: number | null) {
 }
 
 export default function ChatPage() {
+  useSignOutOnPageExit();
+
   const [conversation, setConversation] = useState<{ id: string } | null>(null);
   const [showRetentionNotice, setShowRetentionNotice] = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);
