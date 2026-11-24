@@ -38,7 +38,7 @@ export async function POST(
         text: parsed.data.text,
       },
     });
-    await tx.adminMessage.create({
+    const adminMessage = await tx.adminMessage.create({
       data: {
         conversationId,
         senderId: session.userId,
@@ -58,7 +58,7 @@ export async function POST(
         adminTypingUntil: senderRole === "ADMIN" ? null : undefined,
       },
     });
-    return userMessage;
+    return { userMessage, adminMessage };
   });
 
   after(async () => {
@@ -66,7 +66,7 @@ export async function POST(
     if (pusher) {
       await pusher
         .trigger(`private-conversation-${conversationId}`, "message:new", {
-          id: result.id,
+          id: result.userMessage.id,
           senderRole,
         })
         .catch((error) => console.error("Conversation realtime event failed", error));
@@ -110,5 +110,8 @@ export async function POST(
       }
     }
   });
-  return NextResponse.json({ message: result }, { status: 201 });
+  return NextResponse.json(
+    { message: senderRole === "ADMIN" ? result.adminMessage : result.userMessage },
+    { status: 201 },
+  );
 }
