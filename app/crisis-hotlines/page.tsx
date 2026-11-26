@@ -46,7 +46,7 @@ export default function CrisisHotlinesPage() {
         </div>
       </header>
 
-      <div className="container-shell max-w-3xl py-8 md:py-12">
+      <div className="container-shell max-w-3xl py-8 md:py-12 pb-24 md:pb-12">
         {/* Reassuring Hero Banner */}
         <div className="text-center">
           <div className="inline-flex items-center gap-2 rounded-full border border-[#00A884]/30 bg-[#202C33] px-4 py-1.5 text-xs font-semibold text-[#00A884]">
@@ -230,7 +230,7 @@ export default function CrisisHotlinesPage() {
                 Whatever you&apos;re going through, a Samaritan will listen without judgment.
               </p>
             </div>
-            <div className="flex items-center gap-3">
+            <div className="flex items-center justify-between sm:justify-end gap-3 w-full sm:w-auto border-t sm:border-t-0 border-[#222E35] pt-3 sm:pt-0">
               <span className="font-mono text-xl font-bold text-[#25D366]">116 123</span>
               <a
                 href="tel:116123"
@@ -254,7 +254,7 @@ export default function CrisisHotlinesPage() {
                 24-hour crisis support and suicide prevention services across Australia.
               </p>
             </div>
-            <div className="flex items-center gap-3">
+            <div className="flex items-center justify-between sm:justify-end gap-3 w-full sm:w-auto border-t sm:border-t-0 border-[#222E35] pt-3 sm:pt-0">
               <span className="font-mono text-xl font-bold text-[#25D366]">13 11 14</span>
               <a
                 href="tel:131114"
@@ -295,6 +295,26 @@ export default function CrisisHotlinesPage() {
         <p className="mt-8 text-center text-xs leading-relaxed text-[#8696A0]">
           ReachOut is a private emotional listening platform and not an emergency service. In life-threatening emergencies, please call local emergency services or 911 / 112 / 999 immediately.
         </p>
+      </div>
+
+      {/* Mobile Sticky Quick Action Bar */}
+      <div className="fixed bottom-0 inset-x-0 z-40 border-t border-[#222E35] bg-[#111B21]/95 p-3 backdrop-blur md:hidden">
+        <div className="grid grid-cols-2 gap-2">
+          <a
+            href="tel:988"
+            className="flex items-center justify-center gap-1.5 rounded-xl bg-[#00A884] py-3 text-xs font-bold text-[#0B141A] shadow-md active:scale-95 text-center"
+          >
+            <PhoneCall size={15} />
+            <span>Call 988</span>
+          </a>
+          <a
+            href="sms:741741?body=HOME"
+            className="flex items-center justify-center gap-1.5 rounded-xl border border-[#2A3942] bg-[#202C33] py-3 text-xs font-bold text-[#E9EDEF] active:scale-95 text-center"
+          >
+            <MessageSquare size={15} className="text-[#00A884]" />
+            <span>Text 741741</span>
+          </a>
+        </div>
       </div>
     </main>
   );
