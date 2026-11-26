@@ -2,12 +2,13 @@
 import { Fragment } from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import Pusher from "pusher-js";
-import { ArrowLeft, CheckCheck, CircleAlert, LoaderCircle, LockKeyhole, Send, ShieldAlert } from "lucide-react";
+import { ArrowLeft, CheckCheck, CircleAlert, ImagePlus, LoaderCircle, LockKeyhole, Send, ShieldAlert, X } from "lucide-react";
 import { useSignOutOnPageExit } from "@/lib/use-sign-out-on-page-exit";
 
 type Message = {
   id: string;
   text: string;
+  messageType?: "TEXT" | "IMAGE";
   senderRole: "USER" | "ADMIN";
   createdAt: string;
   isRead: boolean;
@@ -36,6 +37,8 @@ export default function ChatPage() {
   const [text, setText] = useState("");
   const [sending, setSending] = useState(false);
   const [sendError, setSendError] = useState("");
+  const [selectedImage, setSelectedImage] = useState<{ name: string; dataUrl: string } | null>(null);
+  const imageInput = useRef<HTMLInputElement>(null);
   const [typing, setTyping] = useState(false);
   const [connectionIssue, setConnectionIssue] = useState(false);
   const [adminIsOnline, setAdminIsOnline] = useState(false);
@@ -276,15 +279,40 @@ export default function ChatPage() {
     }
   }
 
+  function selectImage(file: File | undefined) {
+    if (!file) return;
+    if (!/^image\/(jpeg|png|webp|gif)$/i.test(file.type)) {
+      setSendError("Please choose a JPG, PNG, WEBP, or GIF image.");
+      return;
+    }
+    if (file.size > 3 * 1024 * 1024) {
+      setSendError("Images must be smaller than 3 MB.");
+      return;
+    }
+    setSendError("");
+    const reader = new FileReader();
+    reader.onload = () => {
+      if (typeof reader.result === "string") {
+        setSelectedImage({ name: file.name, dataUrl: reader.result });
+      }
+    };
+    reader.onerror = () => setSendError("The image could not be read. Please try again.");
+    reader.readAsDataURL(file);
+  }
+
   async function send() {
-    if (!conversation || !text.trim() || sending) return;
+    if (!conversation || (!text.trim() && !selectedImage) || sending) return;
     const outgoing = text.trim();
+    const image = selectedImage;
     setSending(true);
     setSendError("");
     setText("");
+    setSelectedImage(null);
+    if (imageInput.current) imageInput.current.value = "";
     const optimistic: Message = {
       id: `pending-${Date.now()}`,
-      text: outgoing,
+      text: image?.dataUrl || outgoing,
+      messageType: image ? "IMAGE" : "TEXT",
       senderRole: "USER",
       createdAt: new Date().toISOString(),
       isRead: false,
@@ -294,7 +322,9 @@ export default function ChatPage() {
       const response = await fetch(`/api/conversations/${conversation.id}/messages`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text: outgoing }),
+        body: JSON.stringify(image
+          ? { text: outgoing, image: image.dataUrl }
+          : { text: outgoing }),
       });
       if (response.ok) {
         const data = await response.json();
@@ -303,12 +333,14 @@ export default function ChatPage() {
       } else {
         setMessages((current) => current.filter((message) => message.id !== optimistic.id));
         setText(outgoing);
+        setSelectedImage(image);
         const data = await response.json().catch(() => null);
         setSendError(data?.error || "Message wasn’t sent. Please try again.");
       }
     } catch {
       setMessages((current) => current.filter((message) => message.id !== optimistic.id));
       setText(outgoing);
+      setSelectedImage(image);
       setSendError("Connection lost. Your message wasn’t sent—please try again.");
     } finally {
       setSending(false);
@@ -438,9 +470,20 @@ export default function ChatPage() {
                           : "rounded-tl-none bg-[#202C33] text-[#E9EDEF]"
                       }`}
                     >
-                      <p className="pr-12 text-[15px] leading-[1.35] whitespace-pre-wrap break-words">
-                        {message.text}
-                      </p>
+                      {message.messageType === "IMAGE" ? (
+                        <div className="mb-5">
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img
+                            src={message.text}
+                            alt="Chat attachment"
+                            className="block max-h-72 max-w-full rounded-md object-contain"
+                          />
+                        </div>
+                      ) : (
+                        <p className="pr-12 text-[15px] leading-[1.35] whitespace-pre-wrap break-words">
+                          {message.text}
+                        </p>
+                      )}
                       <span className="absolute bottom-1.5 right-2 flex items-center gap-1 text-[10px] text-[#8696A0]">
                         {message.id.startsWith("pending-")
                           ? "Sending..."
@@ -484,7 +527,38 @@ export default function ChatPage() {
               {sendError}
             </p>
           )}
+          {selectedImage && (
+            <div className="mx-auto mb-2 flex max-w-4xl items-center gap-2 rounded-xl bg-[#182229] p-2">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={selectedImage.dataUrl} alt="" className="size-14 rounded-lg object-cover" />
+              <span className="min-w-0 flex-1 truncate text-xs text-[#8696A0]">{selectedImage.name}</span>
+              <button
+                type="button"
+                onClick={() => setSelectedImage(null)}
+                aria-label="Remove selected image"
+                className="grid size-8 place-items-center rounded-full text-[#8696A0] hover:bg-white/10"
+              >
+                <X size={16} />
+              </button>
+            </div>
+          )}
           <div className="mx-auto flex max-w-4xl items-end gap-2">
+            <input
+              ref={imageInput}
+              type="file"
+              accept="image/jpeg,image/png,image/webp,image/gif"
+              onChange={(event) => selectImage(event.target.files?.[0])}
+              className="hidden"
+            />
+            <button
+              type="button"
+              onClick={() => imageInput.current?.click()}
+              disabled={sending}
+              aria-label="Add image"
+              className="grid size-12 shrink-0 place-items-center rounded-full text-[#8696A0] transition active:scale-90 hover:bg-[#2A3942] hover:text-[#E9EDEF]"
+            >
+              <ImagePlus size={22} />
+            </button>
             <textarea
               value={text}
               onChange={(event) => updateText(event.target.value)}
@@ -502,7 +576,7 @@ export default function ChatPage() {
             />
             <button
               onClick={send}
-              disabled={!text.trim() || sending}
+              disabled={(!text.trim() && !selectedImage) || sending}
               aria-label={sending ? "Sending message" : "Send message"}
               className={`grid size-12 shrink-0 place-items-center rounded-full bg-[#00A884] text-[#0B141A] shadow-[0_4px_12px_rgba(0,168,132,.3)] transition duration-150 active:scale-90 disabled:cursor-not-allowed disabled:opacity-60 ${sending ? "animate-pulse" : "hover:scale-105 hover:shadow-[0_6px_18px_rgba(0,168,132,.4)]"}`}
             >

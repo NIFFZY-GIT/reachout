@@ -51,6 +51,7 @@ type AdminMessage = {
   id: string;
   senderRole: "USER" | "ADMIN";
   text: string;
+  messageType?: "TEXT" | "IMAGE";
   createdAt: string;
   isRead: boolean;
 };
@@ -1294,9 +1295,20 @@ export default function AdminPage() {
                                 : "rounded-tl-sm bg-[#202C33] text-[#E9EDEF]"
                             }`}
                           >
-                            <p className="pr-12 text-[14.5px] leading-relaxed whitespace-pre-wrap break-words">
-                              {message.text}
-                            </p>
+                            {message.messageType === "IMAGE" ? (
+                              <div className="mb-5">
+                                {/* eslint-disable-next-line @next/next/no-img-element */}
+                                <img
+                                  src={message.text}
+                                  alt="Chat attachment"
+                                  className="block max-h-80 max-w-full rounded-md object-contain"
+                                />
+                              </div>
+                            ) : (
+                              <p className="pr-12 text-[14.5px] leading-relaxed whitespace-pre-wrap break-words">
+                                {message.text}
+                              </p>
+                            )}
                             <span className="mt-1 flex items-center justify-end gap-1 text-[10px] text-[#8696A0]">
                               {message.id.startsWith("pending-")
                                 ? "Sending..."

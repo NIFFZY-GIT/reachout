@@ -5,7 +5,16 @@ import { prisma } from "@/lib/prisma";
 import { getPusher } from "@/lib/pusher";
 import { sendAdminMessageNotification } from "@/lib/email";
 
-const schema = z.object({ text: z.string().trim().min(1).max(5000) });
+const schema = z.object({
+  text: z.string().trim().max(5000).optional(),
+  image: z
+    .string()
+    .regex(/^data:image\/(jpeg|png|webp|gif);base64,/i)
+    .max(4 * 1024 * 1024)
+    .optional(),
+}).refine((value) => Boolean(value.text?.trim()) || Boolean(value.image), {
+  message: "A message or image is required.",
+});
 
 export async function POST(
   request: NextRequest,
@@ -29,13 +38,18 @@ export async function POST(
   if (!parsed.success) return NextResponse.json({ error: "Message is invalid." }, { status: 400 });
 
   const senderRole = session.user.role;
+  const isImage = Boolean(parsed.data.image);
+  const storedText = parsed.data.image || parsed.data.text?.trim() || "";
+  const messageType = isImage ? "IMAGE" : "TEXT";
+  const conversationPreview = isImage ? "📷 Image" : storedText;
   const result = await prisma.$transaction(async (tx) => {
     const userMessage = await tx.userMessage.create({
       data: {
         conversationId,
         senderId: session.userId,
         senderRole,
-        text: parsed.data.text,
+        text: storedText,
+        messageType,
       },
     });
     const adminMessage = await tx.adminMessage.create({
@@ -43,13 +57,14 @@ export async function POST(
         conversationId,
         senderId: session.userId,
         senderRole,
-        text: parsed.data.text,
+        text: storedText,
+        messageType,
       },
     });
     await tx.conversation.update({
       where: { id: conversationId },
       data: {
-        lastMessage: parsed.data.text,
+        lastMessage: conversationPreview,
         lastMessageAt: new Date(),
         lastMessageSender: senderRole,
         adminUnreadCount: senderRole === "USER" ? { increment: 1 } : undefined,
