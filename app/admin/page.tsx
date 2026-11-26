@@ -155,7 +155,7 @@ export default function AdminPage() {
   const [note, setNote] = useState("");
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState<"ALL" | "UNREAD" | "AWAITING" | "ACTIVE" | "RESOLVED">("ALL");
-  const [showNotesPanel, setShowNotesPanel] = useState(true);
+  const [showNotesPanel, setShowNotesPanel] = useState(false);
   const [sending, setSending] = useState(false);
   const [addingNote, setAddingNote] = useState(false);
   const [editingNoteId, setEditingNoteId] = useState<string | null>(null);
