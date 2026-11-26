@@ -18,17 +18,29 @@ export async function GET(
   const after = request.nextUrl.searchParams.get("after");
   const afterDate = after ? new Date(after) : null;
   const now = new Date();
+  const selectedConversation = await prisma.conversation.findUnique({
+    where: { id: conversationId },
+    select: { userId: true },
+  });
+  if (!selectedConversation) {
+    return NextResponse.json({ error: "Not found" }, { status: 404 });
+  }
+  const siblingConversations = await prisma.conversation.findMany({
+    where: { userId: selectedConversation.userId },
+    select: { id: true },
+  });
+  const conversationIds = siblingConversations.map((conversation) => conversation.id);
   await prisma.$transaction([
     prisma.adminMessage.updateMany({
-      where: { conversationId, senderRole: "USER", isRead: false },
+      where: { conversationId: { in: conversationIds }, senderRole: "USER", isRead: false },
       data: { isRead: true, readAt: now },
     }),
     prisma.userMessage.updateMany({
-      where: { conversationId, senderRole: "USER", isRead: false },
+      where: { conversationId: { in: conversationIds }, senderRole: "USER", isRead: false },
       data: { isRead: true, readAt: now },
     }),
     prisma.conversation.updateMany({
-      where: { id: conversationId, adminUnreadCount: { gt: 0 } },
+      where: { id: { in: conversationIds }, adminUnreadCount: { gt: 0 } },
       data: { adminUnreadCount: 0 },
     }),
   ]);
@@ -51,8 +63,11 @@ export async function GET(
       adminMessages: {
         where:
           afterDate && !Number.isNaN(afterDate.getTime())
-            ? { createdAt: { gte: new Date(afterDate.getTime() - 2000) } }
-            : undefined,
+            ? {
+                conversationId: { in: conversationIds },
+                createdAt: { gte: new Date(afterDate.getTime() - 2000) },
+              }
+            : { conversationId: { in: conversationIds } },
         orderBy: { createdAt: "asc" },
       },
       adminNotes: { orderBy: { createdAt: "asc" } },
@@ -61,7 +76,7 @@ export async function GET(
   if (!conversation) return NextResponse.json({ error: "Not found" }, { status: 404 });
   const { user, ...conversationData } = conversation;
   const receipts = await prisma.adminMessage.findMany({
-    where: { conversationId, senderRole: "ADMIN" },
+    where: { conversationId: { in: conversationIds }, senderRole: "ADMIN" },
     select: { id: true, isRead: true, readAt: true },
   });
   return NextResponse.json({

@@ -298,18 +298,18 @@ export default function CrisisHotlinesPage() {
       </div>
 
       {/* Mobile Sticky Quick Action Bar */}
-      <div className="fixed bottom-0 inset-x-0 z-40 border-t border-[#222E35] bg-[#111B21]/95 p-3 backdrop-blur md:hidden">
+      <div className="fixed bottom-0 inset-x-0 z-40 border-t border-[#222E35] bg-[#111B21]/95 p-2.5 pb-[max(0.75rem,env(safe-area-inset-bottom))] backdrop-blur md:hidden">
         <div className="grid grid-cols-2 gap-2">
           <a
             href="tel:988"
-            className="flex items-center justify-center gap-1.5 rounded-xl bg-[#00A884] py-3 text-xs font-bold text-[#0B141A] shadow-md active:scale-95 text-center"
+            className="flex min-h-[46px] items-center justify-center gap-1.5 rounded-xl bg-[#00A884] py-2.5 text-xs font-bold text-[#0B141A] shadow-md active:scale-95 text-center"
           >
             <PhoneCall size={15} />
             <span>Call 988</span>
           </a>
           <a
             href="sms:741741?body=HOME"
-            className="flex items-center justify-center gap-1.5 rounded-xl border border-[#2A3942] bg-[#202C33] py-3 text-xs font-bold text-[#E9EDEF] active:scale-95 text-center"
+            className="flex min-h-[46px] items-center justify-center gap-1.5 rounded-xl border border-[#2A3942] bg-[#202C33] py-2.5 text-xs font-bold text-[#E9EDEF] active:scale-95 text-center"
           >
             <MessageSquare size={15} className="text-[#00A884]" />
             <span>Text 741741</span>

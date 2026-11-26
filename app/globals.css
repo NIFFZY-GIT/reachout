@@ -29,6 +29,7 @@
 
 * {
   box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
 }
 
 html {
@@ -42,6 +43,7 @@ body {
   color: #E9EDEF;
   font-family: var(--font-geist-sans), Arial, sans-serif;
   color-scheme: dark;
+  -webkit-font-smoothing: antialiased;
 }
 
 ::selection {
@@ -71,11 +73,29 @@ a {
 
 button, input, textarea, select {
   font: inherit;
+  touch-action: manipulation;
+}
+
+/* Prevent iOS Safari auto-zoom on input focus */
+@media (max-width: 768px) {
+  input, textarea, select {
+    font-size: 16px !important;
+  }
 }
 
 .container-shell {
-  width: min(1120px, calc(100% - 32px));
+  width: min(1120px, calc(100% - 24px));
   margin-inline: auto;
+}
+
+@media (min-width: 640px) {
+  .container-shell {
+    width: min(1120px, calc(100% - 36px));
+  }
+}
+
+.safe-bottom {
+  padding-bottom: max(1rem, env(safe-area-inset-bottom));
 }
 
 .chat-protected {

@@ -159,7 +159,7 @@ export default function LoginPage() {
 
       {/* Right Column: Sign In Form */}
       <div
-        className="flex min-h-screen items-center justify-center p-6 md:p-10"
+        className="flex min-h-screen items-center justify-center px-4 py-8 sm:p-8 md:p-10"
         style={{
           backgroundImage:
             "radial-gradient(circle at 50% 0%, rgba(0,168,132,.08) 0%, transparent 60%)",
@@ -176,14 +176,14 @@ export default function LoginPage() {
             </Link>
             <Link
               href="/"
-              className="inline-flex items-center gap-1 text-xs text-[#8696A0] hover:text-[#E9EDEF]"
+              className="inline-flex min-h-[36px] items-center gap-1 text-xs text-[#8696A0] hover:text-[#E9EDEF]"
             >
               <ArrowLeft size={13} /> Back
             </Link>
           </div>
 
           {/* Form Card */}
-          <div className="rounded-[28px] border border-[#222E35] bg-[#111B21] p-7 md:p-9 shadow-[0_25px_60px_rgba(0,0,0,0.6)]">
+          <div className="rounded-2xl sm:rounded-[28px] border border-[#222E35] bg-[#111B21] p-5 sm:p-7 md:p-9 shadow-[0_25px_60px_rgba(0,0,0,0.6)]">
             <h2 className="text-2xl font-bold text-[#E9EDEF] md:text-3xl">Welcome back</h2>
             <p className="mt-2 text-sm text-[#8696A0]">
               Sign in to resume your private, encrypted session.

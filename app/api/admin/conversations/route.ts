@@ -27,29 +27,55 @@ export async function GET() {
       adminNotes: { orderBy: { createdAt: "desc" }, take: 3 },
     },
   });
+  const latestByUser = new Map<string, (typeof conversations)[number]>();
+  for (const conversation of conversations) {
+    const existing = latestByUser.get(conversation.userId);
+    if (
+      !existing ||
+      (conversation.lastMessageAt?.getTime() ?? conversation.createdAt.getTime()) >
+        (existing.lastMessageAt?.getTime() ?? existing.createdAt.getTime())
+    ) {
+      latestByUser.set(conversation.userId, conversation);
+    }
+  }
+  const uniqueConversations = [...latestByUser.values()];
   const totals = {
     users: await prisma.user.count({ where: { role: "USER" } }),
-    conversations: conversations.length,
-    unread: conversations.reduce((sum, item) => sum + item.adminUnreadCount, 0),
-    awaiting: conversations.filter((item) => item.lastMessageSender === "USER").length,
-    active: conversations.filter((item) => item.status === "OPEN").length,
-    resolved: conversations.filter((item) => item.status === "RESOLVED").length,
+    conversations: uniqueConversations.length,
+    unread: uniqueConversations.reduce((sum, item) => {
+      const duplicates = conversations.filter(
+        (candidate) => candidate.userId === item.userId,
+      );
+      return sum + duplicates.reduce((count, candidate) => count + candidate.adminUnreadCount, 0);
+    }, 0),
+    awaiting: uniqueConversations.filter((item) => item.lastMessageSender === "USER").length,
+    active: uniqueConversations.filter((item) => item.status === "OPEN").length,
+    resolved: uniqueConversations.filter((item) => item.status === "RESOLVED").length,
   };
   const nowMs = now.getTime();
   return NextResponse.json({
-    conversations: conversations.map(({ user, ...conversation }) => ({
-      ...conversation,
-      user: {
-        id: user.id,
-        username: user.username,
-        email: user.email,
-        lastSeen: user.lastSeen,
-      },
-      userSessionExpiresAt: user.sessions[0]?.expiresAt ?? null,
-      userIsTyping:
-        Boolean(conversation.userTypingUntil) &&
-        conversation.userTypingUntil!.getTime() > nowMs,
-    })),
+    conversations: uniqueConversations.map(({ user, ...conversation }) => {
+      const duplicates = conversations.filter(
+        (candidate) => candidate.userId === conversation.userId,
+      );
+      return {
+        ...conversation,
+        adminUnreadCount: duplicates.reduce(
+          (count, candidate) => count + candidate.adminUnreadCount,
+          0,
+        ),
+        user: {
+          id: user.id,
+          username: user.username,
+          email: user.email,
+          lastSeen: user.lastSeen,
+        },
+        userSessionExpiresAt: user.sessions[0]?.expiresAt ?? null,
+        userIsTyping:
+          Boolean(conversation.userTypingUntil) &&
+          conversation.userTypingUntil!.getTime() > nowMs,
+      };
+    }),
     totals,
   });
 }

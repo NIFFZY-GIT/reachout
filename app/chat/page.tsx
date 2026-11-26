@@ -337,28 +337,30 @@ export default function ChatPage() {
       className="chat-protected h-[100dvh] overflow-hidden bg-[#0B141A] md:p-4"
     >
       <div className="mx-auto flex h-full max-w-5xl flex-col overflow-hidden bg-[#0B141A] md:h-[calc(100dvh-32px)] md:rounded-2xl md:border md:border-[#2A3942] md:shadow-[0_20px_60px_rgba(0,168,132,.12)]">
-        <header className="flex h-[68px] shrink-0 items-center justify-between bg-[#202C33] px-3 text-[#E9EDEF] md:px-5">
-          <div className="flex min-w-0 items-center gap-3">
+        <header className="flex h-[64px] sm:h-[68px] shrink-0 items-center justify-between bg-[#202C33] px-2 sm:px-3 text-[#E9EDEF] md:px-5">
+          <div className="flex min-w-0 items-center gap-1.5 sm:gap-3">
             <button
               onClick={() => { window.location.href = "/dashboard"; }}
               aria-label="Back"
-              className="grid size-10 shrink-0 place-items-center rounded-full transition active:scale-90 active:bg-white/10"
+              className="grid size-9 sm:size-10 shrink-0 place-items-center rounded-full transition active:scale-90 active:bg-white/10"
             >
-              <ArrowLeft size={21} />
+              <ArrowLeft size={19} className="sm:size-[21px]" />
             </button>
-            <div className="grid size-11 shrink-0 place-items-center rounded-full bg-[#00A884] text-[#0B141A] shadow-sm">
-              <ShieldAlert size={21} />
+            <div className="grid size-9 sm:size-11 shrink-0 place-items-center rounded-full bg-[#00A884] text-[#0B141A] shadow-sm">
+              <ShieldAlert size={18} className="sm:size-[21px]" />
             </div>
-            <div className="min-w-0">
-              <h1 className="truncate text-[15px] font-semibold">ReachOut Support Team</h1>
-              <p className="mt-0.5 flex items-center gap-1 text-xs text-[#8696A0]">
+            <div className="min-w-0 pr-1">
+              <h1 className="truncate text-sm sm:text-[15px] font-semibold">ReachOut Support</h1>
+              <p className="mt-0.5 flex items-center gap-1 text-[11px] sm:text-xs text-[#8696A0]">
                 <span
-                  className={`size-2 rounded-full ${adminIsOnline ? "bg-[#25D366]" : "bg-[#8696A0]"}`}
+                  className={`size-2 shrink-0 rounded-full ${adminIsOnline ? "bg-[#25D366]" : "bg-[#8696A0]"}`}
                 />
-                <LockKeyhole size={11} />
-                {connectionIssue
-                  ? "Reconnecting…"
-                  : `Admin ${adminIsOnline ? "online" : "offline"} · Private session`}
+                <LockKeyhole size={10} className="shrink-0" />
+                <span className="truncate">
+                  {connectionIssue
+                    ? "Reconnecting…"
+                    : `Admin ${adminIsOnline ? "online" : "offline"}`}
+                </span>
               </p>
             </div>
           </div>
@@ -370,13 +372,13 @@ export default function ChatPage() {
                   : "Automatic sign-out timer off"
               }
               title="Automatic sign-out countdown"
-              className="rounded-full bg-[#182229] px-2.5 py-2 font-mono text-xs font-semibold text-[#FFD279]"
+              className="rounded-full bg-[#182229] px-2 py-1 sm:px-2.5 sm:py-1.5 font-mono text-[11px] sm:text-xs font-semibold text-[#FFD279]"
             >
               {sessionTimeoutEnabled ? formatCountdown(sessionSeconds) : "Timer off"}
             </span>
             <button
               onClick={logout}
-              className="rounded-full px-3 py-2 text-xs font-semibold text-[#8696A0] transition active:scale-95 active:bg-white/10"
+              className="rounded-full px-2.5 py-1.5 sm:px-3 sm:py-2 text-xs font-semibold text-[#8696A0] transition active:scale-95 active:bg-white/10"
             >
               Sign out
             </button>

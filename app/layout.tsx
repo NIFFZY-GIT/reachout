@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 
@@ -12,9 +12,18 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 5,
+  themeColor: "#0B141A",
+  colorScheme: "dark",
+};
+
 export const metadata: Metadata = {
-  title: "ReachOut | Human emotional support",
-  description: "A private, judgment-free space to speak with the ReachOut support team.",
+  title: "ReachOut | Confidential Crisis & Suicide Prevention Support",
+  description:
+    "A private, 100% anonymous space to speak with dedicated human support for crisis intervention, suicide prevention, and acute mental stress.",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
