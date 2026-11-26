@@ -285,19 +285,43 @@ export default function ChatPage() {
       setSendError("Please choose a JPG, PNG, WEBP, or GIF image.");
       return;
     }
-    if (file.size > 3 * 1024 * 1024) {
-      setSendError("Images must be smaller than 3 MB.");
+    if (file.size > 15 * 1024 * 1024) {
+      setSendError("Images must be smaller than 15 MB.");
       return;
     }
     setSendError("");
-    const reader = new FileReader();
-    reader.onload = () => {
-      if (typeof reader.result === "string") {
-        setSelectedImage({ name: file.name, dataUrl: reader.result });
+    const sourceUrl = URL.createObjectURL(file);
+    const image = new Image();
+    image.onload = () => {
+      URL.revokeObjectURL(sourceUrl);
+      const maxDimension = 1600;
+      const scale = Math.min(1, maxDimension / Math.max(image.width, image.height));
+      const canvas = document.createElement("canvas");
+      canvas.width = Math.max(1, Math.round(image.width * scale));
+      canvas.height = Math.max(1, Math.round(image.height * scale));
+      const context = canvas.getContext("2d");
+      if (!context) {
+        setSendError("The image could not be processed. Please try again.");
+        return;
       }
+      context.drawImage(image, 0, 0, canvas.width, canvas.height);
+      let quality = 0.82;
+      let dataUrl = canvas.toDataURL("image/jpeg", quality);
+      while (dataUrl.length > 1_100_000 && quality > 0.55) {
+        quality -= 0.08;
+        dataUrl = canvas.toDataURL("image/jpeg", quality);
+      }
+      if (dataUrl.length > 1_300_000) {
+        setSendError("This image is too large after compression. Please choose a smaller image.");
+        return;
+      }
+      setSelectedImage({ name: file.name, dataUrl });
     };
-    reader.onerror = () => setSendError("The image could not be read. Please try again.");
-    reader.readAsDataURL(file);
+    image.onerror = () => {
+      URL.revokeObjectURL(sourceUrl);
+      setSendError("The image could not be read. Please try again.");
+    };
+    image.src = sourceUrl;
   }
 
   async function send() {

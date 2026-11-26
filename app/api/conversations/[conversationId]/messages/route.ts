@@ -10,7 +10,7 @@ const schema = z.object({
   image: z
     .string()
     .regex(/^data:image\/(jpeg|png|webp|gif);base64,/i)
-    .max(4 * 1024 * 1024)
+    .max(1_400_000)
     .optional(),
 }).refine((value) => Boolean(value.text?.trim()) || Boolean(value.image), {
   message: "A message or image is required.",
